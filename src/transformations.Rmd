@@ -5,17 +5,33 @@ date: "February 3, 2018"
 output: html_document
 ---
 
+```{r eval=FALSE, echo=FALSE}
+# Save your program and run this code to insure that
+# your output appears in the results directory.
+library(rmarkdown)
+f <- "~/transformation-tutorial/src/transformations.Rmd"
+render(f, output_dir="~/transformation-tutorial/results")
+```
+
 This program produces some graphs the help to illustrate how transformations work.
 
-```{r log10-axes, fig.height=2, fig.width=6}
-xrange <- -3:3
-plot(xrange, xrange, type="n", axes=FALSE, xlab=" ", ylab=" ")
-axis(side=1, at=xrange)
-axis(side=3, at=xrange, labels=10^xrange)
-```
-```{r log2-axes, fig.height=2, fig.width=6}
-xrange <- -10:10
-plot(xrange, xrange, type="n", axes=FALSE, xlab=" ", ylab=" ")
-axis(side=1, at=xrange)
-axis(side=3, at=xrange, labels=2^xrange)
+```{r log-axes, fig.height=4, fig.width=3}
+form <- function(x) {
+  format(x, big.mark=",", scientific=FALSE, drop0trailing =TRUE)
+}
+amin <- -1
+amax <-  4
+arange <- amin:amax
+alabel <- form(10^arange)
+bmin <- trunc(log2(10^amin))
+bmax <- trunc(log2(10^amax))
+brange <- bmin:bmax
+crange <- brange*log(2)/log(10)
+clabel <- form(10^crange)
+par(mar=rep(0.1, 4), las=2, cex=0.75)
+plot(arange, arange, type="n", axes=FALSE, xlab=" ", ylab=" ")
+axis(side=4, at=arange, pos=amin+1.5)
+axis(side=2, at=arange, pos=amin+1,   labels=alabel)
+axis(side=4, at=crange, pos=amax-1,   labels=brange)
+axis(side=2, at=crange, pos=amax-1.5, labels=clabel)
 ```
