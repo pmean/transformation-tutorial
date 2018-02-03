@@ -1,0 +1,21 @@
+---
+title: "Transformations tutorial"
+author: "Steve Simon"
+date: "February 3, 2018"
+output: html_document
+---
+
+This program produces some graphs the help to illustrate how transformations work.
+
+```{r log10-axes, fig.height=2, fig.width=6}
+xrange <- -3:3
+plot(xrange, xrange, type="n", axes=FALSE, xlab=" ", ylab=" ")
+axis(side=1, at=xrange)
+axis(side=3, at=xrange, labels=10^xrange)
+```
+```{r log2-axes, fig.height=2, fig.width=6}
+xrange <- -10:10
+plot(xrange, xrange, type="n", axes=FALSE, xlab=" ", ylab=" ")
+axis(side=1, at=xrange)
+axis(side=3, at=xrange, labels=2^xrange)
+```
