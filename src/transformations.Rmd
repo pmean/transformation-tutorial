@@ -35,3 +35,116 @@ axis(side=2, at=arange, pos=amin+1,   labels=alabel)
 axis(side=4, at=crange, pos=amax-1,   labels=brange)
 axis(side=2, at=crange, pos=amax-1.5, labels=clabel)
 ```
+
+Read in the metabolic ratio data.
+
+```{r read-metabolic}
+library(dplyr)
+library(magrittr)
+mr <- read.csv("~/transformation-tutorial/dat/metabolic_ratio.csv")
+plot(mr$gene_group, mr$met_ratio)
+plot(mr$gene_group, log(mr$met_ratio, base=2))
+table(mr$gene_group)
+for (g in c(0, 0.5, 1, 1.5, 2, 2.5, 3)) {
+  cat("\n\ngene_group = ")
+  cat(g)
+  cat("\n")
+  mr                                   %>%
+    filter(gene_group==g)              %>%
+    use_series(met_ratio)              %>%
+    summary                            %>%
+    print
+  cat("\nsd = ")
+  mr                                   %>%
+    filter(gene_group==g)              %>%
+    use_series(met_ratio)              %>%
+    sd                                 %>%
+    cat
+}
+```
+
+Compare the skewness before and after transformation.
+
+```{r skewness}
+draw_boxplot <- function(x, y, w) {
+  l <- x-w
+  r <- x+w
+  segments(x, quantile(y, 0.00), x, quantile(y, 0.25))
+  segments(l, quantile(y, 0.25), r, quantile(y, 0.25))
+  segments(l, quantile(y, 0.50), r, quantile(y, 0.50))
+  segments(l, quantile(y, 0.75), r, quantile(y, 0.75))
+  segments(l, quantile(y, 0.25), l, quantile(y, 0.75))
+  segments(r, quantile(y, 0.25), r, quantile(y, 0.75))
+  segments(x, quantile(y, 0.75), x, quantile(y, 1.00))
+}
+rescale <- function(x) {
+  (x-min(x)) / (max(x)-min(x))
+}
+standardize <- function(x) {
+  (x-mean(x))/sd(x)
+}
+mr                                     %>%
+  filter(gene_group == 0.5)            %>%
+  filter(met_ratio > 0)                %>%
+  rename(not_transformed = met_ratio)  -> mlog
+
+mlog$log_transformed  = log2(mlog$not_transformed)
+mlog$not_tr_rescaled  = rescale(mlog$not_transformed)
+mlog$log_tr_rescaled  = rescale(mlog$log_transformed)
+mlog$not_tr_zscore    = standardize(mlog$not_transformed)
+mlog$log_tr_zscore    = standardize(mlog$log_transformed)
+
+par(mar=rep(0.1, 4))
+plot(c(0, 5), c(-0.2, 1), type="n", axes=FALSE)
+draw_boxplot(2, mlog$not_tr_rescaled, 0.5)
+draw_boxplot(3, mlog$log_tr_rescaled, 0.5)
+mlog                                   %>%
+  use_series(not_transformed)          %>%
+  quantile(probs=(0:4)/4)              %>%
+  signif(2)                            ->  not_tr_labels
+print(not_tr_labels)
+text(rep(1, 5), quantile(mlog$not_tr_rescaled)[-2], not_tr_labels[-2])
+mlog                                   %>%
+  use_series(log_transformed)          %>%
+  quantile(probs=(0:4)/4)              %>%
+  signif(2)                            ->  log_tr_labels
+print(not_tr_labels)
+text(rep(4, 5), quantile(mlog$log_tr_rescaled), log_tr_labels)
+text(2, -0.1, "not\ntransformed")
+text(3, -0.1, "log\ntransformed")
+
+```
+
+Show how the log transformation can reduce the impact of outliers.
+
+```{r outliers}
+mr                                     %>%
+  filter(gene_group == 0.5)            %>%
+  rename(not_transformed = met_ratio)  -> mlog
+
+mlog$log_transformed  = log2(mlog$not_transformed)
+mlog$not_tr_rescaled  = rescale(mlog$not_transformed)
+mlog$log_tr_rescaled  = rescale(mlog$log_transformed)
+mlog$not_tr_zscore    = standardize(mlog$not_transformed)
+mlog$log_tr_zscore    = standardize(mlog$log_transformed)
+
+n <- dim(mlog)[1]
+par(mar=rep(0.1, 4))
+plot(c(0, 5), c(-0.2, 1), type="n", axes=FALSE)
+points(rep(2, n), mlog$not_tr_rescaled)
+points(rep(3, n), mlog$log_tr_rescaled)
+mlog                                   %>%
+  use_series(not_tr_zscore)            %>%
+  range                                %>%
+  round(1)                             %>%
+  paste("sd")                          ->  not_tr_labels
+text(rep(1, 2), 0:1, not_tr_labels)
+mlog                                   %>%
+  use_series(log_tr_zscore)            %>%
+  range                                %>%
+  round(1)                             %>%
+  paste("sd")                          ->  log_tr_labels
+text(rep(4, 2), 0:1, log_tr_labels)
+text(2, -0.1, "not\ntransformed")
+text(3, -0.1, "log\ntransformed")
+```
