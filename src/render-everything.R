@@ -3,7 +3,8 @@
 # store the results in the results directory.
 
 library(rmarkdown)
-file_list <- list.files(path="src", pattern="*.Rmd", full.names=TRUE)
+file_list <- list.files(
+  path="~/transformation-tutorial/src", pattern="*.Rmd", full.names=TRUE)
 for (f in file_list) {
-  render(f, output_dir="results")
+  render(f, output_dir="~/transformation-tutorial/results")
 }

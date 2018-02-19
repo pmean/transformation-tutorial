@@ -13,22 +13,49 @@ f <- "~/transformation-tutorial/src/transformations.Rmd"
 render(f, output_dir="~/transformation-tutorial/results")
 ```
 
+```{r utilities, echo=FALSE}
+source("~/common-programs/src/utilities.R")
+```
+
 This program produces some graphs the help to illustrate how transformations work.
 
-```{r log-axes, fig.height=4, fig.width=3}
+```{r set-limits, echo=FALSE}
 form <- function(x) {
   format(x, big.mark=",", scientific=FALSE, drop0trailing =TRUE)
 }
 amin <- -1
 amax <-  4
 arange <- amin:amax
+```
+
+```{r graph-log, echo=FALSE, fig.width=2, fig.height=2}
+x <- seq(0.25, 4, length=1000)
+par(mar=rep(0.1, 4))
+plot(x, log2(x), xlim=c(0, 4), ylim=c(-2, 2), type="l", axes=FALSE)
+u <- c(2.75, 3, 3.5, 3.75)
+segments(u, 0 , u, log2(u))
+segments(0, log2(u), u, log2(u))
+segments(0,-2, 0, 2)
+segments(0, 0, 4, 0)
+par(mar=rep(0.1, 4))
+plot(x, log2(x), xlim=c(0, 4), ylim=c(-2, 2), type="l", axes=FALSE)
+u <- c(0.3, 0.4, 0.6, 0.7)
+segments(u, 0 , u, log2(u))
+segments(0, log2(u), u, log2(u))
+segments(0,-2, 0, 2)
+segments(0, 0, 4, 0)
+```
+
+The base 10 logarithm and the base 2 logarithm are the logarithms most commonly used. The natural logarithm has a few mathematical advantages, but produces tick marks at integer powers of e, which makes it difficult to switch from the natural logarithm back to the original scale. The choice between base 2 and base 10 logarithms depends on how many tick marks you want on your graph, assuming you place a tick mark at each integer value of the logarithm. This graph shows where tick marks would appear for a variable that ranges between `r 10^amin` and `r 10^amax` on both a base 2 and a base 10 logarithm.
+
+```{r log-axes, fig.height=2, fig.width=2, echo=FALSE}
 alabel <- form(10^arange)
 bmin <- trunc(log2(10^amin))
 bmax <- trunc(log2(10^amax))
 brange <- bmin:bmax
 crange <- brange*log(2)/log(10)
 clabel <- form(10^crange)
-par(mar=rep(0.1, 4), las=2, cex=0.75)
+par(mar=rep(0.1, 4), las=2, cex=0.5)
 plot(arange, arange, type="n", axes=FALSE, xlab=" ", ylab=" ")
 axis(side=4, at=arange, pos=amin+1.5)
 axis(side=2, at=arange, pos=amin+1,   labels=alabel)
@@ -41,7 +68,7 @@ Read in the metabolic ratio data.
 ```{r read-metabolic}
 library(dplyr)
 library(magrittr)
-mr <- read.csv("~/transformation-tutorial/dat/metabolic_ratio.csv")
+mr <- read.csv("~/transformation-tutorial/data/metabolic_ratio.csv")
 plot(mr$gene_group, mr$met_ratio)
 plot(mr$gene_group, log(mr$met_ratio, base=2))
 table(mr$gene_group)
@@ -63,9 +90,11 @@ for (g in c(0, 0.5, 1, 1.5, 2, 2.5, 3)) {
 }
 ```
 
-Compare the skewness before and after transformation.
+The log transformation can sometimes make a skewed distribution look more symmetric. It doesn't work at all for negatively (left) skewed distributions, and it is not guaranteed to work for positively (right) skewed distributions. But it often works well because it shrinks the long right tail of a positively skewed distribution while simultaneously stretching out the short left tail.
 
-```{r skewness}
+Here's an example of a data set where a right skewed distribution becomes closer to symmetric after a log transformation.
+
+```{r skewness, echo=FALSE, fig.width=2, fig.height=2}
 draw_boxplot <- function(x, y, w) {
   l <- x-w
   r <- x+w
@@ -86,15 +115,20 @@ standardize <- function(x) {
 mr                                     %>%
   filter(gene_group == 0.5)            %>%
   filter(met_ratio > 0)                %>%
+  arrange(desc(met_ratio))             %>%
   rename(not_transformed = met_ratio)  -> mlog
 
-mlog$log_transformed  = log2(mlog$not_transformed)
+f <- "~/transformation-tutorial/data/skewed-example.csv"
+write.csv(mlog, file=f)
+mlog <- read.csv(file=f, header=TRUE, as.is=TRUE)
+
+mlog$log_transformed  = log10(mlog$not_transformed)
 mlog$not_tr_rescaled  = rescale(mlog$not_transformed)
 mlog$log_tr_rescaled  = rescale(mlog$log_transformed)
 mlog$not_tr_zscore    = standardize(mlog$not_transformed)
 mlog$log_tr_zscore    = standardize(mlog$log_transformed)
 
-par(mar=rep(0.1, 4))
+par(mar=rep(0.1, 4), cex=0.75)
 plot(c(0, 5), c(-0.2, 1), type="n", axes=FALSE)
 draw_boxplot(2, mlog$not_tr_rescaled, 0.5)
 draw_boxplot(3, mlog$log_tr_rescaled, 0.5)
@@ -102,25 +136,34 @@ mlog                                   %>%
   use_series(not_transformed)          %>%
   quantile(probs=(0:4)/4)              %>%
   signif(2)                            ->  not_tr_labels
-print(not_tr_labels)
-text(rep(1, 5), quantile(mlog$not_tr_rescaled)[-2], not_tr_labels[-2])
+text(rep(1, 3), 
+  quantile(mlog$not_tr_rescaled)[c(1, 3, 5)],
+  not_tr_labels[c(1, 3, 5)], cex=0.5)
+text(rep(1, 2), 
+  quantile(mlog$not_tr_rescaled)[c(2, 4)],
+  not_tr_labels[c(2, 4)], cex=0.5)
 mlog                                   %>%
   use_series(log_transformed)          %>%
   quantile(probs=(0:4)/4)              %>%
   signif(2)                            ->  log_tr_labels
-print(not_tr_labels)
-text(rep(4, 5), quantile(mlog$log_tr_rescaled), log_tr_labels)
-text(2, -0.1, "not\ntransformed")
-text(3, -0.1, "log\ntransformed")
+text(rep(4, 5), quantile(mlog$log_tr_rescaled), log_tr_labels, cex=0.5)
+text(2, -0.1, "not\ntransformed", cex=0.5)
+text(3, -0.1, "log\ntransformed", cex=0.5)
 
 ```
 
-Show how the log transformation can reduce the impact of outliers.
+This graph shows how the log transformation can reduce the impact of outliers, but only for outliers that appear on the high end.
 
-```{r outliers}
+```{r outliers, echo=FALSE, fig.width=2, fig.height=2}
 mr                                     %>%
   filter(gene_group == 0.5)            %>%
+  arrange(desc(met_ratio))             %>%
   rename(not_transformed = met_ratio)  -> mlog
+
+f <- "~/transformation-tutorial/data/outlier-example.csv"
+write.csv(mlog, file=f)
+
+mlog <- read.csv(file=f, header=TRUE, as.is=TRUE)
 
 mlog$log_transformed  = log2(mlog$not_transformed)
 mlog$not_tr_rescaled  = rescale(mlog$not_transformed)
@@ -129,7 +172,7 @@ mlog$not_tr_zscore    = standardize(mlog$not_transformed)
 mlog$log_tr_zscore    = standardize(mlog$log_transformed)
 
 n <- dim(mlog)[1]
-par(mar=rep(0.1, 4))
+par(mar=rep(0.1, 4), cex=0.75)
 plot(c(0, 5), c(-0.2, 1), type="n", axes=FALSE)
 points(rep(2, n), mlog$not_tr_rescaled)
 points(rep(3, n), mlog$log_tr_rescaled)
@@ -138,13 +181,116 @@ mlog                                   %>%
   range                                %>%
   round(1)                             %>%
   paste("sd")                          ->  not_tr_labels
-text(rep(1, 2), 0:1, not_tr_labels)
+text(rep(1, 2), 0:1, not_tr_labels, cex=0.5)
 mlog                                   %>%
   use_series(log_tr_zscore)            %>%
   range                                %>%
   round(1)                             %>%
   paste("sd")                          ->  log_tr_labels
-text(rep(4, 2), 0:1, log_tr_labels)
-text(2, -0.1, "not\ntransformed")
-text(3, -0.1, "log\ntransformed")
+text(rep(4, 2), 0:1, log_tr_labels, cex=0.5)
+text(2, -0.1, "not\ntransformed", cex=0.5)
+text(3, -0.1, "log\ntransformed", cex=0.5)
+```
+
+The log transformation can sometimes fix problems with heteroscedascity. This will only work when the group(s) with the larger standard deviations have larger means and the group(s) with the smaller standard deviations have the smaller means. This is a fairly common pattern, actually. 
+
+```{r heteroscedascity-example, echo=FALSE}
+mr                                     %>%
+  filter(gene_group <= 0.5)            %>%
+  arrange(gene_group, desc(met_ratio)) %>%
+  rename(not_transformed = met_ratio)  -> mlog
+
+f <- "~/transformation-tutorial/data/heteroscedascity-example.csv"
+write.csv(mlog, file=f)
+
+mlog <- read.csv(file=f, header=TRUE, as.is=TRUE)
+
+mlog                                   %>%
+  mutate(log_transformed =
+    log10(not_transformed))            %>%
+  group_by(gene_group)                 %>%
+  summarize(
+    stats_not=mnsd(not_transformed),
+    stats_log=mnsd(log_transformed))   %>%
+  print
+
+```
+
+The log transformation can remove a multiplicative interaction.
+
+```{r multiplicative-interaction, echo=FALSE, fig.width=2, fig.height=2}
+par(mar=rep(0.1, 4), cex=0.4, xaxs="i", mfrow=c(1,2))
+plot(c(0.4,2.6), c(-1, 6), type="n", axes=FALSE)
+segments(1, 0.5, 2, 2)
+segments(1, 1, 2, 4)
+text(0.95, 0.5, 0.5, adj=1)
+text(0.95, 1, 1, adj=1)
+text(2.05, 2, 2, adj=0)
+text(2.05, 4, 4, adj=0)
+text(1.5, 5, "Not\ntransformed")
+plot(c(0.4,2.6), c(-1, 6), type="n", axes=FALSE)
+segments(1,-1, 2, 1)
+segments(1, 0, 2, 2)
+text(0.95,-1,-1, adj=1)
+text(0.95, 0, 0, adj=1)
+text(2.05, 1, 1, adj=0)
+text(2.05, 2, 2, adj=0)
+text(1.5, 5, "Log\ntransformed")
+```
+
+The inverse transformation is also commonly used.
+
+```{r graph-inverse, echo=FALSE, fig.width=2, fig.height=2}
+x <- seq(0.25, 4, length=1000)
+par(mar=rep(0.1, 4))
+plot(x, 1/x, xlim=c(0, 4), ylim=c(0, 4), type="l", axes=FALSE)
+u <- c(1.5, 2, 3, 3.5)
+segments(u, 0 , u, 1/u)
+segments(0, 1/u , u, 1/u)
+segments(0, 0, 0, 4)
+segments(0, 0, 4, 0)
+par(mar=rep(0.1, 4))
+plot(x, 1/x, xlim=c(0, 4), ylim=c(0, 4), type="l", axes=FALSE)
+u <- c(6/5, 4/3, 2, 12/5)
+segments(1/u, 0 , 1/u, u)
+segments(0, u, 1/u , u)
+segments(0, 0, 0, 4)
+segments(0, 0, 4, 0)
+```
+
+The Box-Cox transformations show a hierarchy.
+
+```{r box-cox, echo=FALSE, fig.width=2, fig.height=2}
+draw_lines <- function(lambda, co="black") {
+  x <- seq(0.25, 4, length=1000)
+  y <- log(x)
+  if (lambda!=0) y <- (x^lambda-1)/lambda
+  yrange <- which(y > -0.75 & y < 3)
+  lines(x[yrange], y[yrange], col=co)
+  return(data.frame(x=x[yrange], y=y[yrange]))
+}
+draw_figure <- function(color_list) {
+  par(mar=rep(0.1, 4), cex=0.4)
+  plot(c(0.25, 4.2), c(-0.75, 3), type="n", axes=FALSE)
+  d <- c(20, 20, 20, 20, 15, 5, 5)
+  lambda_list <- c(-1, -0.5, 0, 0.5, 1, 2, 3)
+  for (i in 1:length(lambda_list)) {
+    lambda <- lambda_list[i]
+    l <- draw_lines(lambda, co=color_list[i])
+    n <- dim(l)[1]
+    dy <- l$y[n]-l$y[n-1]
+    dx <- l$x[n]-l$x[n-1]
+    line_angle <- atan2(dy, dx) * 180 / pi
+    text(
+      l$x[n]+d[i]*dx,
+      l$y[n]+d[i]*dy,
+      lambda,
+      col=color_list[i],
+      srt=line_angle,
+      adj=0)
+  }
+}
+draw_figure(rep("black", 7))
+draw_figure(rep(c("gray", "black"), c(5, 2)))
+draw_figure(rep(c("black", "gray"), c(4, 3)))
 ```
