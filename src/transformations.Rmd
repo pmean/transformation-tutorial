@@ -294,3 +294,11 @@ draw_figure(rep("black", 7))
 draw_figure(rep(c("gray", "black"), c(5, 2)))
 draw_figure(rep(c("black", "gray"), c(4, 3)))
 ```
+
+The logit transformation is different from any of the other transformations discussed so far.
+
+```{r graph-logit, echo=FALSE, fig.width=2, fig.height=2}
+x <- seq(0.001, 0.999, length=1000)
+par(mar=rep(0.1, 4))
+plot(log10(x/(1-x)), x, xlim=c(-3, 3), ylim=c(0, 1), type="l", axes=FALSE)
+```
